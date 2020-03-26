@@ -85,11 +85,29 @@ namespace LibraryWebServer.Controllers
         [HttpPost]
         public ActionResult AllTitles()
         {
-
-            // TODO: Implement
-
-            return Json(null);
-
+            using (Team45LibraryContext db = new Team45LibraryContext())
+            {
+                var query =
+                    from t in db.Titles
+                    join i in db.Inventory on t.Isbn equals i.Isbn
+                    into join1
+                    from j1 in join1.DefaultIfEmpty()
+                    join c in db.CheckedOut on j1.Serial equals c.Serial
+                    into join2
+                    from j2 in join2.DefaultIfEmpty()
+                    join p in db.Patrons on j2.CardNum equals p.CardNum
+                    into join3
+                    from j3 in join3.DefaultIfEmpty()
+                    select new
+                    {
+                        isbn = t.Isbn,
+                        title = t.Title,
+                        author = t.Author,
+                        serial = j1 == null ? null : (uint?)j1.Serial,
+                        name = j3 == null ? "" : j3.Name
+                    };
+                return Json(query.ToArray());
+            }
         }
 
         /// <summary>
@@ -103,8 +121,23 @@ namespace LibraryWebServer.Controllers
         [HttpPost]
         public ActionResult ListMyBooks()
         {
-            // TODO: Implement
-            return Json(null);
+            using (Team45LibraryContext db = new Team45LibraryContext())
+            {
+                var query =
+                    from t in db.Titles
+                    join i in db.Inventory on t.Isbn equals i.Isbn                    
+                    join c in db.CheckedOut on i.Serial equals c.Serial                    
+                    join p in db.Patrons on c.CardNum equals p.CardNum
+                    where p.CardNum == card
+                    select new
+                    {
+                        isbn = t.Isbn,
+                        title = t.Title,
+                        author = t.Author,
+                        serial = i.Serial
+                    };
+                return Json(query.ToArray());
+            }
         }
 
 
