@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using LMS.Models.LMSModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -40,12 +41,20 @@ namespace LMS.Controllers
     /// <returns>The JSON result</returns>
     public IActionResult GetCourses(string subject)
     {
-      
-      return Json(null);
+            using (Team45LMSContext db = new Team45LMSContext())
+            {
+                var query =
+                    from c in db.Courses
+                    join d in db.Departments on c.Dept equals d.Subject
+                    where d.Subject == subject
+                    select new
+                    {
+                        number = c.Number,
+                        name = c.Name
+                    };
+                return Json(query.ToArray());
+            }
     }
-
-
-    
 
 
     /// <summary>
@@ -59,7 +68,7 @@ namespace LMS.Controllers
     /// <returns>The JSON result</returns>
     public IActionResult GetProfessors(string subject)
     {
-   
+        //need to fix foreign keys as specified in the grade for Phase 2 before it can be implemented
       return Json(null);
     }
 
@@ -76,9 +85,25 @@ namespace LMS.Controllers
 	/// false if the Course already exists.</returns>
     public IActionResult CreateCourse(string subject, int number, string name)
     {
-      
+            using (Team45LMSContext db = new Team45LMSContext())
+            {
+                var query =
+                    from t in db.Titles
+                    join i in db.Inventory on t.Isbn equals i.Isbn
+                    join c in db.CheckedOut on i.Serial equals c.Serial
+                    join p in db.Patrons on c.CardNum equals p.CardNum
+                    where p.CardNum == card
+                    select new
+                    {
+                        isbn = t.Isbn,
+                        title = t.Title,
+                        author = t.Author,
+                        serial = i.Serial
+                    };
+                return Json(new { success = true });
+            }
 
-      return Json(new { success = false });
+            return Json(new { success = false });
     }
 
 
