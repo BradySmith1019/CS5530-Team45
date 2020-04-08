@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using LMS.Models.LMSModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -40,12 +41,21 @@ namespace LMS.Controllers
     /// <returns>The JSON result</returns>
     public IActionResult GetCourses(string subject)
     {
-      
-      return Json(null);
+            using (Team45LMSContext db = new Team45LMSContext())
+            {
+                //find all courses where the Subject matches and return their number and name
+                var query =
+                    from c in db.Courses
+                    join d in db.Departments on c.Dept equals d.Subject
+                    where d.Subject == subject
+                    select new
+                    {
+                        number = c.Number,
+                        name = c.Name
+                    };
+                return Json(query.ToArray());
+            }
     }
-
-
-    
 
 
     /// <summary>
@@ -59,7 +69,7 @@ namespace LMS.Controllers
     /// <returns>The JSON result</returns>
     public IActionResult GetProfessors(string subject)
     {
-   
+        //TODO: need to fix foreign keys as specified in the grade for Phase 2 before it can be implemented
       return Json(null);
     }
 
@@ -76,9 +86,39 @@ namespace LMS.Controllers
 	/// false if the Course already exists.</returns>
     public IActionResult CreateCourse(string subject, int number, string name)
     {
-      
+            //local variable to choose Json result
+            bool Success = false;
+            using (Team45LMSContext db = new Team45LMSContext())
+            {
+                //check if the course already exists
+                var query =
+                    from c in db.Courses
+                    where c.Name == name && c.Number == number && c.Dept == subject
+                    select c.CourseId;
+                // if it doesn't exist add it to Courses
+                if(query.Count()!=0)
+                {
+                    Success = true;
+                //Create a new Course with the given Dept, Number, and Name
+                Courses newCourse = new Courses();
+                newCourse.Dept = subject;
+                newCourse.Number = (uint)number;
+                newCourse.Name = name;
 
-      return Json(new { success = false });
+                // Adds the new Course object to the Courses table
+                db.Courses.Add(newCourse);
+                db.SaveChanges();
+                }
+            }
+            //choose Json result
+            if(Success == false)
+            { 
+                return Json(new { success = false });
+            }
+            else
+            {
+                return Json(new { success = true });
+            }
     }
 
 
@@ -100,9 +140,54 @@ namespace LMS.Controllers
     /// a Class offering of the same Course in the same Semester.</returns>
     public IActionResult CreateClass(string subject, int number, string season, int year, DateTime start, DateTime end, string location, string instructor)
     {
-      
-      return Json(new { success = false });
-    }
+            //local variable to choose Json result
+            bool Success = false;
+            using (Team45LMSContext db = new Team45LMSContext())
+            {
+                //check if the class already exists with the above conditions
+                var q1 =
+                    from c in db.Classes
+                    join d in db.Courses on c.CourseId equals d.CourseId
+                    where d.Dept == subject && d.Number == number && c.Season == season && c.Year == year 
+                    select c.CourseId;
+                var q2 =
+                    from c in db.Classes
+                    where c.Location == location && ((c.Start >= start && c.Start <= end) || (c.End <= end && c.End >= end))
+                    select c.CourseId;
+                //get the course id
+                var q3 =
+                    from d in db.Courses
+                    where d.Dept == subject && d.Number == number
+                    select d.CourseId;
+                // if it doesn't exist add it to Classes
+                if (q1.Count() != 0 && q2.Count() !=0)
+                {
+                    Success = true;
+                    //Create a new Class with the found CourseId and the given Season, Year, Start, End, Location and Professor
+                    Classes newClass = new Classes();
+                    newClass.CourseId = q3.ToArray()[0];
+                    newClass.Season= season;
+                    newClass.Year = (uint)year;
+                    newClass.Start = start;
+                    newClass.End = start;
+                    newClass.Location = location;
+                    newClass.Professor = instructor;
+
+                    // Adds the new Class object to the Classes table
+                    db.Classes.Add(newClass);
+                    db.SaveChanges();
+                }
+            }
+            //choose Json result
+            if (Success == false)
+            {
+                return Json(new { success = false });
+            }
+            else
+            {
+                return Json(new { success = true });
+            }
+        }
 
 
     /*******End code to modify********/
