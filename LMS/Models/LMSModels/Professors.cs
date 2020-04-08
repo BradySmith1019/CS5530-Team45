@@ -14,7 +14,9 @@ namespace LMS.Models.LMSModels
         public string FName { get; set; }
         public string LName { get; set; }
         public DateTime Dob { get; set; }
+        public string Subject { get; set; }
 
+        public virtual Departments SubjectNavigation { get; set; }
         public virtual ICollection<Classes> Classes { get; set; }
     }
 }
