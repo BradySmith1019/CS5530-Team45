@@ -485,26 +485,31 @@ namespace LMS.Controllers
         /// <returns>A unique uID that is not be used by anyone else</returns>
         public string CreateNewUser(string fName, string lName, DateTime DOB, string SubjectAbbrev, string role)
         {
-
+            // Holders for the newly created Uid and the highest current Uid in the tables
             string newStringUid = "";
-            using (Team45LMSContext db = new Team45LMSContext())
-            {
-                var studentID =
-                (from s in db.Students
-                 orderby s.UId descending
-                 select s.UId).Take(1);
-                var professorID =
-                    (from p in db.Professors
-                     orderby p.UId descending
-                     select p.UId).Take(1);
-                var adminID =
-                    (from a in db.Administrators
-                     orderby a.UId descending
-                     select a.UId).Take(1);
+            int highest = 0;
 
-                string sHighest = studentID.ElementAt(0);
-                string pHighest = professorID.ElementAt(0);
-                string aHighest = adminID.ElementAt(0);
+            // Retrieves the highest Uid from the Students, Professors, and Administrators tables
+            var studentID =
+                (from s in db.Students
+                orderby s.UId descending
+                select s.UId).Take(1);
+            var professorID =
+                (from p in db.Professors
+                 orderby p.UId descending
+                 select p.UId).Take(1);
+            var adminID =
+                (from a in db.Administrators
+                 orderby a.UId descending
+                 select a.UId).Take(1);
+
+            // Checks if any of the tables are empty and handles the various cases appropriately to 
+            // avoid a NullPointerException
+            if (studentID.Any() && professorID.Any() && adminID.Any())
+            {
+                string sHighest = studentID.First();
+                string pHighest = professorID.First();
+                string aHighest = adminID.First();
 
                 string sNoU = sHighest.Substring(1);
                 string pNoU = pHighest.Substring(1);
@@ -515,46 +520,141 @@ namespace LMS.Controllers
                 int aNum = Int32.Parse(aNoU);
 
                 int higher = Math.Max(sNum, pNum);
-                int highest = Math.Max(higher, aNum);
-
-                int newUid = highest + 1;
-
-                newStringUid = "u" + newUid.ToString();
-
-                switch (role)
-                {
-                    case "Administrator":
-                        Administrators admin = new Administrators();
-                        admin.FName = fName;
-                        admin.LName = lName;
-                        admin.Dob = DOB;
-                        admin.UId = newStringUid;
-                        db.Administrators.Add(admin);
-                        break;
-                    case "Professor":
-                        Professors prof = new Professors();
-                        prof.FName = fName;
-                        prof.LName = lName;
-                        prof.Dob = DOB;
-                        prof.UId = newStringUid;
-                        prof.Subject = SubjectAbbrev;
-                        db.Professors.Add(prof);
-                        break;
-                    case "Student":
-                        Students student = new Students();
-                        student.FName = fName;
-                        student.LName = lName;
-                        student.Dob = DOB;
-                        student.UId = newStringUid;
-                        student.Subject = SubjectAbbrev;
-                        db.Students.Add(student);
-                        break;
-                }
-
-                db.SaveChanges();
+                highest = Math.Max(higher, aNum);
             }
 
+            else if (!studentID.Any() && professorID.Any() && adminID.Any())
+            {
+                string pHighest = professorID.First();
+                string aHighest = adminID.First();
 
+                string pNoU = pHighest.Substring(1);
+                string aNoU = aHighest.Substring(1);
+
+                int pNum = Int32.Parse(pNoU);
+                int aNum = Int32.Parse(aNoU);
+
+                highest = Math.Max(pNum, aNum);
+            }
+
+            else if (studentID.Any() && !professorID.Any() && adminID.Any())
+            {
+                string sHighest = studentID.First();
+                string aHighest = adminID.First();
+
+                string sNoU = sHighest.Substring(1);
+                string aNoU = aHighest.Substring(1);
+
+                int sNum = Int32.Parse(sNoU);
+                int aNum = Int32.Parse(aNoU);
+
+                highest = Math.Max(sNum, aNum);
+            }
+
+            else if (studentID.Any() && professorID.Any() && !adminID.Any())
+            {
+                string sHighest = studentID.First();
+                string pHighest = professorID.First();
+
+                string sNoU = sHighest.Substring(1);
+                string pNoU = pHighest.Substring(1);
+
+                int sNum = Int32.Parse(sNoU);
+                int pNum = Int32.Parse(pNoU);
+
+                highest = Math.Max(sNum, pNum);
+            }
+
+            else if (!studentID.Any() && !professorID.Any() && adminID.Any())
+            {
+                string aHighest = adminID.First();
+
+                string aNoU = aHighest.Substring(1);
+
+                highest = Int32.Parse(aNoU);
+            }
+
+            else if (studentID.Any() && !professorID.Any() && !adminID.Any())
+            {
+                string sHighest = studentID.First();
+
+                string sNoU = sHighest.Substring(1);
+
+                highest = Int32.Parse(sNoU);
+            }
+
+            else if (!studentID.Any() && professorID.Any() && !adminID.Any())
+            {
+                string pHighest = professorID.First();
+
+                string pNoU = pHighest.Substring(1);
+
+                highest = Int32.Parse(pNoU);
+            }
+
+            // Creates a new Uid with a number one higher than the previous highest
+            int newUid = highest + 1;
+
+            // Prepends a u to the new Uid
+            newStringUid = "u" + newUid.ToString();
+
+            // Handles the cases where the Uid is not 8 characters long, adding the appropriate number of 0's
+            switch (newStringUid.Length)
+            {
+                case 2:
+                    newStringUid = newStringUid.Insert(1, "000000");
+                    break;
+                case 3:
+                    newStringUid = newStringUid.Insert(1, "00000");
+                    break;
+                case 4:
+                    newStringUid = newStringUid.Insert(1, "0000");
+                    break;
+                case 5:
+                    newStringUid = newStringUid.Insert(1, "000");
+                    break;
+                case 6:
+                    newStringUid = newStringUid.Insert(1, "00");
+                    break;
+                case 7:
+                    newStringUid = newStringUid.Insert(1, "0");
+                    break;
+                default:
+                    break;
+            }
+
+            // Adds the new user to the appropriate table based on the role parameter
+            switch (role)
+            {
+                case "Administrator":
+                    Administrators admin = new Administrators();
+                    admin.FName = fName;
+                    admin.LName = lName;
+                    admin.Dob = DOB;
+                    admin.UId = newStringUid;
+                    db.Administrators.Add(admin);
+                    break;
+                case "Professor":
+                    Professors prof = new Professors();
+                    prof.FName = fName;
+                    prof.LName = lName;
+                    prof.Dob = DOB;
+                    prof.UId = newStringUid;
+                    prof.Subject = SubjectAbbrev;
+                    db.Professors.Add(prof);
+                    break;
+                case "Student":
+                    Students student = new Students();
+                    student.FName = fName;
+                    student.LName = lName;
+                    student.Dob = DOB;
+                    student.UId = newStringUid;
+                    student.Subject = SubjectAbbrev;
+                    db.Students.Add(student);
+                    break;
+            }
+
+            db.SaveChanges();
 
             return newStringUid;
         }

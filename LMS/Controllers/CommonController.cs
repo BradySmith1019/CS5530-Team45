@@ -13,9 +13,6 @@ namespace LMS.Controllers
 
         /*******Begin code to modify********/
 
-        // TODO: Uncomment and change 'X' after you have scaffoled
-
-
         protected Team45LMSContext db;
 
         public CommonController()
@@ -30,8 +27,6 @@ namespace LMS.Controllers
          *          The "right" way is through Dependency Injection via the constructor 
          *          (look this up if interested).
         */
-
-        // TODO: Uncomment and change 'X' after you have scaffoled
 
         public void UseLMSContext(Team45LMSContext ctx)
         {
@@ -58,7 +53,7 @@ namespace LMS.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetDepartments()
         {
-
+            // Retrieves all the departments from the departments table and returns them in a JSON array
             var query =
                 from d in db.Departments
                 select new

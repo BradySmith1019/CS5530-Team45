@@ -152,7 +152,7 @@ namespace LMS.Controllers
                     select c.CourseId;
                 var q2 =
                     from c in db.Classes
-                    where c.Location == location && ((c.Start >= start && c.Start <= end) || (c.End <= end && c.End >= end))
+                    where c.Location == location //&& ((c.Start >= start && c.Start <= end) || (c.End <= end && c.End >= end))
                     select c.CourseId;
                 //get the course id
                 var q3 =
@@ -168,8 +168,8 @@ namespace LMS.Controllers
                     newClass.CourseId = q3.ToArray()[0];
                     newClass.Season= season;
                     newClass.Year = (uint)year;
-                    newClass.Start = start;
-                    newClass.End = start;
+                    //newClass.Start = start;
+                    //newClass.End = start;
                     newClass.Location = location;
                     newClass.Professor = instructor;
 

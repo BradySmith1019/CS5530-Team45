@@ -15,8 +15,8 @@ namespace LMS.Models.LMSModels
         public uint Year { get; set; }
         public string Season { get; set; }
         public string Location { get; set; }
-        public DateTime Start { get; set; }
-        public DateTime End { get; set; }
+        public TimeSpan Start { get; set; }
+        public TimeSpan End { get; set; }
         public uint ClassId { get; set; }
         public uint CourseId { get; set; }
         public string Professor { get; set; }
