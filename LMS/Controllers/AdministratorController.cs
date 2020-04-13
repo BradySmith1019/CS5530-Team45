@@ -69,9 +69,22 @@ namespace LMS.Controllers
     /// <returns>The JSON result</returns>
     public IActionResult GetProfessors(string subject)
     {
-        //TODO: need to fix foreign keys as specified in the grade for Phase 2 before it can be implemented
-      return Json(null);
-    }
+            using (Team45LMSContext db = new Team45LMSContext())
+            {
+                //get all professors who work for the department with the given subject
+                var query =
+                    from p in db.Professors                   
+                    where p.Subject == subject
+                    select new
+                    {
+                        lname = p.LName,
+                        fname = p.FName,
+                        uid = p.UId
+                    };
+                //return the Json formatted result of the query
+                return Json(query.ToArray());
+            }
+        }
 
 
 
