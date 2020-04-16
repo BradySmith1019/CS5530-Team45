@@ -109,7 +109,7 @@ namespace LMS.Controllers
                     where c.Name == name && c.Number == number && c.Dept == subject
                     select c.CourseId;
                 // if it doesn't exist add it to Courses
-                if(query.Count()!=0)
+                if(query.Count()==0)
                 {
                     Success = true;
                 //Create a new Course with the given Dept, Number, and Name
@@ -165,7 +165,7 @@ namespace LMS.Controllers
                     select c.CourseId;
                 var q2 =
                     from c in db.Classes
-                    where c.Location == location //&& ((c.Start >= start && c.Start <= end) || (c.End <= end && c.End >= end))
+                    where c.Location == location && ((Convert.ToDateTime(c.Start) >= start && Convert.ToDateTime(c.Start) <= end) || (Convert.ToDateTime(c.End) <= end && Convert.ToDateTime(c.End) >= end))
                     select c.CourseId;
                 //get the course id
                 var q3 =
@@ -173,7 +173,7 @@ namespace LMS.Controllers
                     where d.Dept == subject && d.Number == number
                     select d.CourseId;
                 // if it doesn't exist add it to Classes
-                if (q1.Count() != 0 && q2.Count() !=0)
+                if (q1.Count() == 0 && q2.Count() ==0)
                 {
                     Success = true;
                     //Create a new Class with the found CourseId and the given Season, Year, Start, End, Location and Professor
@@ -181,8 +181,8 @@ namespace LMS.Controllers
                     newClass.CourseId = q3.ToArray()[0];
                     newClass.Season= season;
                     newClass.Year = (uint)year;
-                    //newClass.Start = start;
-                    //newClass.End = start;
+                    newClass.Start = start.TimeOfDay;
+                    newClass.End = end.TimeOfDay;
                     newClass.Location = location;
                     newClass.Professor = instructor;
 
