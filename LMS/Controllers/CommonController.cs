@@ -259,19 +259,19 @@ namespace LMS.Controllers
 
                     else
                     {
-                        return Json(adminQuery);
+                        return Json(new { adminQuery.First().fname, adminQuery.First().lname, adminQuery.First().uid });
                     }
                 }
 
                 else
                 {
-                    return Json(profQuery);
+                    return Json(new { profQuery.First().fname, profQuery.First().lname, profQuery.First().uid, profQuery.First().department });
                 }
             }
 
             else
             {
-                return Json(studQuery);
+                return Json(new { studQuery.First().fname, studQuery.First().lname, studQuery.First().uid, studQuery.First().department });
             }
 
             
