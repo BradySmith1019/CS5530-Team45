@@ -240,10 +240,7 @@ namespace LMS.Controllers
                 join cl in db.Classes on co.CourseId equals cl.CourseId
                 join e in db.Enrolled on cl.ClassId equals e.ClassId
                 where d.Subject == subject && co.Number == num && cl.Season == season && cl.Year == year && e.UId == uid
-                select new
-                {
-
-                };
+                select e.UId;
 
             if (query.Count() != 0)
             {
@@ -252,12 +249,48 @@ namespace LMS.Controllers
 
             else
             {
-                Enrolled e = new Enrolled();
-                e.UId = uid;
-                //e.ClassId = 
+                var query2 =
+                    from de in db.Departments
+                    join cou in db.Courses on de.Subject equals cou.Dept
+                    join cla in db.Classes on cou.CourseId equals cla.CourseId
+                    join en in db.Enrolled on cla.ClassId equals en.ClassId
+                    where de.Subject == subject && cou.Number == num && cla.Season == season && cla.Year == year
+                    select new
+                    {
+                        cID = cla.ClassId,
+                        coID = cou.CourseId,
+                    };
+
+                if (query2.Count() != 0)
+                {
+                    foreach (var x in query2)
+                    {
+                        Enrolled e = new Enrolled();
+                        e.UId = uid;
+                        e.ClassId = x.cID;
+                        e.CourseId = x.coID;
+                        e.Subject = subject;
+
+                        db.Enrolled.Add(e);
+
+                        db.SaveChanges();
+
+                        return Json(new { success = true });
+                    }
+                }
+
+                else
+                {
+                    return Json(new { success = false });
+
+                }
+
+
             }
 
             return Json(new { success = false });
+
+
         }
 
 
