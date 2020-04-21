@@ -234,6 +234,28 @@ namespace LMS.Controllers
         /// false if the student is already enrolled in the Class.</returns>
         public IActionResult Enroll(string subject, int num, string season, int year, string uid)
         {
+            var query =
+                from d in db.Departments
+                join co in db.Courses on d.Subject equals co.Dept
+                join cl in db.Classes on co.CourseId equals cl.CourseId
+                join e in db.Enrolled on cl.ClassId equals e.ClassId
+                where d.Subject == subject && co.Number == num && cl.Season == season && cl.Year == year && e.UId == uid
+                select new
+                {
+
+                };
+
+            if (query.Count() != 0)
+            {
+                return Json(new { success = false });
+            }
+
+            else
+            {
+                Enrolled e = new Enrolled();
+                e.UId = uid;
+                //e.ClassId = 
+            }
 
             return Json(new { success = false });
         }
@@ -253,8 +275,69 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing a single field called "gpa" with the number value</returns>
         public IActionResult GetGPA(string uid)
         {
+            double GPAcounter = 0.0;
+            int numClasses = 0;
+            double gpa = 0.0;
 
-            return Json(null);
+            var query =
+                from e in db.Enrolled
+                where e.UId == uid
+                select e.Grade;
+
+            if (query.Count() == 0)
+            {
+                return Json(new { gpa });
+
+            }
+            foreach (var x in query)
+            {
+                if (x.Equals("--"))
+                    continue;
+
+                numClasses++;
+                switch(x)
+                {
+                    case "A":
+                        GPAcounter += 4.0;
+                        break;
+                    case "A-":
+                        GPAcounter += 3.7;
+                        break;
+                    case "B+":
+                        GPAcounter += 3.3;
+                        break;
+                    case "B":
+                        GPAcounter += 3.0;
+                        break;
+                    case "B-":
+                        GPAcounter += 2.7;
+                        break;
+                    case "C+":
+                        GPAcounter += 2.3;
+                        break;
+                    case "C":
+                        GPAcounter += 2.0;
+                        break;
+                    case "C-":
+                        GPAcounter += 1.7;
+                        break;
+                    case "D+":
+                        GPAcounter += 1.3;
+                        break;
+                    case "D":
+                        GPAcounter += 1.0;
+                        break;
+                    case "D-":
+                        GPAcounter += 0.7;
+                        break;
+                    case "E":
+                        GPAcounter += 0.0;
+                        break;
+                }
+            }
+
+            gpa = GPAcounter / numClasses;
+            return Json(new { gpa });
         }
 
         /*******End code to modify********/
