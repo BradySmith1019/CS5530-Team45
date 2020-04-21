@@ -245,13 +245,19 @@ namespace LMS.Controllers
                 where a.Name == category && r.Dept == subject && r.Number == num && c.Season == season && c.Year == year
                 select a.CatId;
             // if it doesn't exist add it to AssignmentCategories
-            if (query.Count() != 0)
+            if (query.Count() == 0)
             {
-                Success = true;
+                var query2 =
+                from c in db.Classes
+                join r in db.Courses on c.CourseId equals r.CourseId
+                where r.Dept == subject && r.Number == num && c.Season == season && c.Year == year
+                select c.ClassId;
+                    Success = true;
                 //Create a new AssignmentCategory with the given Name and Weight
                 AssignmentCategories newCat = new AssignmentCategories();
                 newCat.Name = category;
                 newCat.Weight = (uint)catweight;
+                newCat.ClassId = query2.First();
 
                 // Adds the new AssignmentCategory object to the AssignmentCategory table
                 db.AssignmentCategories.Add(newCat);
@@ -296,10 +302,16 @@ namespace LMS.Controllers
                 join c in db.Classes on ac.ClassId equals c.ClassId
                 join r in db.Courses on c.CourseId equals r.CourseId
                 where a.Name == asgname && r.Dept == subject && r.Number == num && c.Season == season && c.Year == year && ac.Name == category
-                select a.CatId;
+                select a.AssignId;
             // if it doesn't exist add it to Assignments
-            if (query1.Count() != 0)
+            if (query1.Count() == 0)
             {
+                var query2 =
+                from ac in db.AssignmentCategories
+                join c in db.Classes on ac.ClassId equals c.ClassId
+                join r in db.Courses on c.CourseId equals r.CourseId
+                where r.Dept == subject && r.Number == num && c.Season == season && c.Year == year && ac.Name == category
+                select ac.CatId;
                 Success = true;
                 //Create a new Assignments with the given Name, Max Points, Due Date and Contents
                 Assignments newAsgn = new Assignments();
@@ -307,20 +319,21 @@ namespace LMS.Controllers
                 newAsgn.MaxPoints = (uint)asgpoints;
                 newAsgn.DueDateTime = asgdue;
                 newAsgn.Contents = asgcontents;
+                newAsgn.CatId = query2.First();
 
                 // Adds the new Assignments object to the Assignments table
                 db.Assignments.Add(newAsgn);
                 db.SaveChanges();
 
                     //Get students in class
-                    var query2 = from s in db.Students
+                    var query3 = from s in db.Students
                                  join e in db.Enrolled on s.UId equals e.UId
                                  join c in db.Classes on e.ClassId equals c.ClassId
                                  join r in db.Courses on c.CourseId equals r.CourseId
                                  where r.Dept == subject && r.Number == num && c.Season == season && c.Year == year
                                  select s.UId;
                     //Auto-update the grades of the students in the class
-                    updateStudentsGrade(query2.ToArray(), subject, num, season, year, category, asgname);
+                    updateStudentsGrade(query3.ToArray(), subject, num, season, year, category, asgname);
                    
                 }
         }
@@ -506,7 +519,13 @@ namespace LMS.Controllers
                 }
 
                 //calculate score and weight for each assignment category
+                try { 
                 categoryPercent += (maxPoints / totalScore) * ac.Weight;
+                }
+                catch (DivideByZeroException e)
+                {
+                    categoryPercent += 0;
+                }
                 categoryWeights += ac.Weight;
             }
             //calculate grade percentage
