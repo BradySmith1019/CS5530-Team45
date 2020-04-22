@@ -333,7 +333,13 @@ namespace LMS.Controllers
                                  where r.Dept == subject && r.Number == num && c.Season == season && c.Year == year
                                  select s.UId;
                     //Auto-update the grades of the students in the class
-                    updateStudentsGrade(query3.ToArray(), subject, num, season, year, category, asgname);
+                    //Get classId
+                    var query4 =
+                        from c in db.Classes
+                        join r in db.Courses on c.CourseId equals r.CourseId
+                        where r.Dept == subject && r.Number == num && c.Season == season && c.Year == year
+                        select c.ClassId;
+                    updateStudentsGrade(query3.ToArray(), query4.First(), category, asgname);
                    
                 }
         }
@@ -409,7 +415,7 @@ namespace LMS.Controllers
             using (Team45LMSContext db = new Team45LMSContext())
             {
                 //get the submission
-                var query =
+                var query1 =
                     from s in db.Submissions
                     join p in db.Students on s.UId equals p.UId
                     join c in db.Classes on s.ClassId equals c.ClassId
@@ -418,9 +424,16 @@ namespace LMS.Controllers
                     join a in db.Assignments on ac.CatId equals a.CatId
                     where p.UId == uid && a.Name == asgname && ac.Name == category && r.Dept == subject && r.Number == num && c.Season == season && c.Year == year
                     select s;
-                query.First().Score = (uint)score;
+                query1.First().Score = (uint)score;
                 db.SaveChanges();
-                updateStudentsGrade(new string[] { uid }, subject, num, season, year, category, asgname);
+                //Get classId
+                var query2 =
+                    from c in db.Classes
+                    join r in db.Courses on c.CourseId equals r.CourseId
+                    where r.Dept == subject && r.Number == num && c.Season == season && c.Year == year
+                    select c.ClassId;
+                updateStudentsGrade(new string[] { uid }, query2.First(),category, asgname);
+                
             }
                 return Json(new { success = true });
         }
@@ -471,41 +484,35 @@ namespace LMS.Controllers
     /// <param name="year">the year of the class</param>
     /// <param name="category">the name of the assignment category</param>
     /// <param name="asgname">the name of the assignment</param>
-    private void updateStudentsGrade(string[] uids, string subject, int num, string season, int year, string category, string asgname)
+    private void updateStudentsGrade(string[] uids, uint classId, string category, string asgname)
         {
             //get the enrollment rows of the given students
             var query1 = from e in db.Enrolled
                          join c in db.Classes on e.ClassId equals c.ClassId
-                         join r in db.Courses on c.CourseId equals r.CourseId
                          join ac in db.AssignmentCategories on c.ClassId equals ac.ClassId
                          join a in db.Assignments on ac.CatId equals a.CatId
-                         where e.UId == Array.Find(uids, value => e.UId == value) && r.Dept == subject && r.Number == num && c.Season == season && c.Year == year && ac.Name == category && a.Name == asgname
+                         where e.UId == Array.Find(uids, value => e.UId == value) && c.ClassId == classId && ac.Name == category && a.Name == asgname
                          select e;
             //get non-empty assignment categories for the given class
-            var query3 = from c in db.Classes
-                         join r in db.Courses on c.CourseId equals r.CourseId
-                         join ac in db.AssignmentCategories on c.ClassId equals ac.ClassId
+            var query3 = from ac in db.AssignmentCategories
                          join a in db.Assignments on ac.CatId equals a.CatId
-                         where r.Dept == subject && r.Number == num && c.Season == season && c.Year == year && a.Name.Count() >= 1
+                         where ac.ClassId == classId
                          select ac;
-            uint categoryPercent = 0;
-            uint categoryWeights = 0;
+            double categoryPercent = 0;
+            double categoryWeights = 0;
             foreach (AssignmentCategories ac in query3)
             {
                 //get all assignments in the given category
-                var query4 = from cl in db.Classes
-                             join c in db.AssignmentCategories on cl.ClassId equals c.ClassId
+                var query4 = from c in db.AssignmentCategories
                              join a in db.Assignments on c.CatId equals a.CatId
-                             where ac.Name == c.Name
+                             where ac.CatId == c.CatId
                              select a;
-                uint maxPoints = 0;
-                uint totalScore = 0;
+                double maxPoints = 0;
+                double totalScore = 0;
                 foreach (Assignments a in query4)
                 {
                     //get score for the given assignment
-                    var query5 = from cl in db.Classes
-                                 join c in db.AssignmentCategories on cl.ClassId equals c.ClassId
-                                 join an in db.Assignments on c.CatId equals an.CatId
+                    var query5 = from an in db.Assignments
                                  join s in db.Submissions on an.AssignId equals s.AssignId
                                  where a.Name == an.Name
                                  select s.Score;
@@ -520,7 +527,7 @@ namespace LMS.Controllers
 
                 //calculate score and weight for each assignment category
                 try { 
-                categoryPercent += (maxPoints / totalScore) * ac.Weight;
+                categoryPercent += (totalScore/maxPoints) * ac.Weight;
                 }
                 catch (DivideByZeroException e)
                 {
@@ -529,8 +536,14 @@ namespace LMS.Controllers
                 categoryWeights += ac.Weight;
             }
             //calculate grade percentage
-            uint totalPercent = categoryPercent * (100 / categoryWeights);
+            double totalPercent = categoryPercent * (100 / categoryWeights);
             string classGrade = convertPercentToLetter(totalPercent);
+
+            foreach (Enrolled student in query1.ToArray())
+            {
+                student.Grade = classGrade;
+            }
+            db.SaveChanges();
         }
     
     /// <summary>
@@ -538,7 +551,7 @@ namespace LMS.Controllers
     /// </summary>
     /// <param name="totalPercent">The percentage grade to convert</param>
     /// <returns>The resulting letter grade</returns>
-    private string convertPercentToLetter(uint totalPercent)
+    private string convertPercentToLetter(double totalPercent)
         {
             if (totalPercent >= 93)
             {
