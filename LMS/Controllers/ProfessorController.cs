@@ -147,7 +147,7 @@ namespace LMS.Controllers
     {
         using (Team45LMSContext db = new Team45LMSContext())
         {
-            if(category == null)
+            if(category != null)
             { 
                 //select assignment name, category name, due date, and amount of submissions for a given assignment category in a given class
                 var query =
@@ -245,7 +245,7 @@ namespace LMS.Controllers
                 where a.Name == category && r.Dept == subject && r.Number == num && c.Season == season && c.Year == year
                 select a.CatId;
             // if it doesn't exist add it to AssignmentCategories
-            if (query.Count() != 0)
+            if (query.Count() == 0)
             {
                 Success = true;
                 //Create a new AssignmentCategory with the given Name and Weight

@@ -112,15 +112,15 @@ namespace LMS.Controllers
                 if(query.Count()==0)
                 {
                     Success = true;
-                //Create a new Course with the given Dept, Number, and Name
-                Courses newCourse = new Courses();
-                newCourse.Dept = subject;
-                newCourse.Number = (uint)number;
-                newCourse.Name = name;
+                    //Create a new Course with the given Dept, Number, and Name
+                    Courses newCourse = new Courses();
+                    newCourse.Dept = subject;
+                    newCourse.Number = (uint)number;
+                    newCourse.Name = name;
 
-                // Adds the new Course object to the Courses table
-                db.Courses.Add(newCourse);
-                db.SaveChanges();
+                    // Adds the new Course object to the Courses table
+                    db.Courses.Add(newCourse);
+                    db.SaveChanges();
                 }
             }
             //choose Json result

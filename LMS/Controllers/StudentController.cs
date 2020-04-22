@@ -234,6 +234,7 @@ namespace LMS.Controllers
         /// false if the student is already enrolled in the Class.</returns>
         public IActionResult Enroll(string subject, int num, string season, int year, string uid)
         {
+            bool success = false;
             var query =
                 from d in db.Departments
                 join co in db.Courses on d.Subject equals co.Dept
@@ -244,7 +245,7 @@ namespace LMS.Controllers
 
             if (query.Count() != 0)
             {
-                return Json(new { success = false });
+                success = false;
             }
 
             else
@@ -253,7 +254,6 @@ namespace LMS.Controllers
                     from de in db.Departments
                     join cou in db.Courses on de.Subject equals cou.Dept
                     join cla in db.Classes on cou.CourseId equals cla.CourseId
-                    join en in db.Enrolled on cla.ClassId equals en.ClassId
                     where de.Subject == subject && cou.Number == num && cla.Season == season && cla.Year == year
                     select new
                     {
@@ -270,27 +270,34 @@ namespace LMS.Controllers
                         e.ClassId = x.cID;
                         e.CourseId = x.coID;
                         e.Subject = subject;
+                        e.Grade = "--";
 
                         db.Enrolled.Add(e);
 
-                        db.SaveChanges();
-
-                        return Json(new { success = true });
+                        success = true;
                     }
                 }
 
                 else
                 {
-                    return Json(new { success = false });
+                    success = false;
 
                 }
 
 
             }
 
-            return Json(new { success = false });
+            if (success)
+            {
+                db.SaveChanges();
 
+                return Json(new { success = true });
+            }
 
+            else
+            {
+                return Json(new { success = false });
+            }
         }
 
 
@@ -324,10 +331,10 @@ namespace LMS.Controllers
             }
             foreach (var x in query)
             {
+                numClasses++;
                 if (x.Equals("--"))
                     continue;
 
-                numClasses++;
                 switch(x)
                 {
                     case "A":
