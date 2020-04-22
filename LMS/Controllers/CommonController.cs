@@ -153,7 +153,12 @@ namespace LMS.Controllers
                 join d in db.Courses on c.CourseId equals d.CourseId
                 where d.Dept == subject && d.Number == num && c.Season == season && c.Year == year && ac.Name == category && a.Name == asgname
                 select a.Contents;
-            return Content(query.ToString());
+
+            foreach (var x in query)
+            {
+                return Content(x);
+            }
+            return Content("");
         }
 
 
