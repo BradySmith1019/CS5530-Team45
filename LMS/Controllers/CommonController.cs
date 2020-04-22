@@ -79,6 +79,7 @@ namespace LMS.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetCatalog()
         {
+            // Gets all the courses for every department
             var query =
                 from d in db.Departments
                 select new
@@ -113,6 +114,7 @@ namespace LMS.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetClassOfferings(string subject, int number)
         {
+            // Gets all of the class offerings for a particular course using the given subject and course number
             var query =
                 from cl in db.Classes
                 join co in db.Courses on cl.CourseId equals co.CourseId
@@ -129,6 +131,7 @@ namespace LMS.Controllers
                     fname = p.FName,
                     lname = p.LName
                 };
+
             return Json(query.ToArray());
         }
 
@@ -158,6 +161,7 @@ namespace LMS.Controllers
             {
                 return Content(x);
             }
+
             return Content("");
         }
 
@@ -195,9 +199,9 @@ namespace LMS.Controllers
             }
             else
             {
-                return Content(query.ToString());
-
+                return Content(query.Last());
             }
+
         }
 
 
@@ -219,6 +223,7 @@ namespace LMS.Controllers
         /// </returns>
         public IActionResult GetUser(string uid)
         {
+            // Query to retrieve the information assuming the given uid corresponds to a student account
             var studQuery =
                 from s in db.Students
                 join d in db.Departments on s.Subject equals d.Subject
@@ -231,6 +236,7 @@ namespace LMS.Controllers
                     department = d.Name
                 };
 
+            // If the Uid doesn't belong to a student account
             if (!studQuery.Any())
             {
                 var profQuery =
@@ -245,6 +251,7 @@ namespace LMS.Controllers
                     department = d.Name
                 };
 
+                // If the Uid doesn't belong to a professor acount
                 if (!profQuery.Any())
                 {
                     var adminQuery =
@@ -257,6 +264,7 @@ namespace LMS.Controllers
                             uid = a.UId
                         };
 
+                    // If the Uid doesn't belong to an administrator account, the user doesn't exist
                     if (!adminQuery.Any())
                     {
                         return Json(new { success = false });

@@ -68,6 +68,7 @@ namespace LMS.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetMyClasses(string uid)
         {
+            // Retrieves all the relevant fields from the database using the given uid 
             var query =
                 from s in db.Students
                 join e in db.Enrolled on s.UId equals e.UId
@@ -104,25 +105,34 @@ namespace LMS.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetAssignmentsInClass(string subject, int num, string season, int year, string uid)
         {
-            var query =
+            // Retrieves all of the assignments and assignment category information using the given parameters
+            var query1 =
                 from d in db.Departments
                 join co in db.Courses on d.Subject equals co.Dept
-                join cl in db.Classes on co.CourseId equals cl.ClassId
-                join e in db.Enrolled on cl.ClassId equals e.ClassId
-                join st in db.Students on e.UId equals st.UId
-                join su in db.Submissions.DefaultIfEmpty() on st.UId equals su.UId
-                join a in db.Assignments on su.AssignId equals a.AssignId
-                join ac in db.AssignmentCategories on a.CatId equals ac.CatId
-                where d.Subject == subject && co.Number == num && cl.Season == season && cl.Year == year && st.UId == uid
+                join c in db.Classes on co.CourseId equals c.CourseId
+                join ac in db.AssignmentCategories on c.ClassId equals ac.ClassId
+                join a in db.Assignments on ac.CatId equals a.CatId
+                where d.Subject == subject && co.Number == num && c.Season == season && c.Year == year
                 select new
                 {
-                    aname = a.Name,
-                    cname = ac.Name,
-                    due = a.DueDateTime,
-                    score = su.Score
+                    a,
+                    ac
                 };
 
-            return Json(query.ToArray());
+            // Joins the previous query with the Submissions table and checks if there are any scores for assignments, sets score = null if not
+            var query2 =
+                from q in query1
+                join s in db.Submissions on new { A = q.a.AssignId, B = uid } equals new { A = s.AssignId, B = s.UId } into joined
+                from j in joined.DefaultIfEmpty()
+                select new
+                {
+                    aname = q.a.Name,
+                    cname = q.ac.Name,
+                    due = q.a.DueDateTime,
+                    score = j == null ? null : (uint?)j.Score
+                };
+
+            return Json(query2.ToArray());
         }
 
 
@@ -148,30 +158,47 @@ namespace LMS.Controllers
         public IActionResult SubmitAssignmentText(string subject, int num, string season, int year,
           string category, string asgname, string uid, string contents)
         {
-            var query =
+            // Used to determine if submission was successful
+            bool success = false;
+
+            var query1 =
                 from d in db.Departments
                 join co in db.Courses on d.Subject equals co.Dept
-                join cl in db.Classes on co.CourseId equals cl.ClassId
-                join e in db.Enrolled on cl.ClassId equals e.ClassId
-                join st in db.Students on e.UId equals st.UId
-                join su in db.Submissions.DefaultIfEmpty() on st.UId equals su.UId
-                join a in db.Assignments on su.AssignId equals a.AssignId
-                join ac in db.AssignmentCategories on a.CatId equals ac.CatId
-                where d.Subject == subject && co.Number == num && cl.Season == season && cl.Year == year && ac.Name == category && a.Name == asgname
+                join c in db.Classes on co.CourseId equals c.CourseId
+                join ac in db.AssignmentCategories on c.ClassId equals ac.ClassId
+                join a in db.Assignments on ac.CatId equals a.CatId
+                where d.Subject == subject && co.Number == num && c.Season == season && c.Year == year && ac.Name == category && a.Name == asgname
                 select new
                 {
-                    assignID = a.AssignId,
-                    catID = ac.CatId,
-                    classID = cl.ClassId,
-                    courseID = co.CourseId,
-                    subject = d.Subject,
-                    time = su.Time
-                    
+                    a,
+                    ac,
+                    c,
+                    co,
+                    d
                 };
 
-            foreach (var x in query)
+            // Checks if there are any submissions already for the given assignent, sets score, contents, subID, UId = Null if not
+            var query2 =
+                from q in query1
+                join su in db.Submissions on new { A = q.a.AssignId, B = uid } equals new { A = su.AssignId, B = su.UId } into joined
+                from j in joined.DefaultIfEmpty()
+                select new
+                {
+                    assignID = q.a.AssignId,
+                    catID = q.ac.CatId,
+                    classID = q.c.ClassId,
+                    courseID = q.co.CourseId,
+                    subject = q.d.Subject,
+                    score = j == null ? null : (uint?)j.Score,
+                    contents = j == null ? null : j.Contents,
+                    subID = j == null ? null : (uint?)j.SubmissionId,
+                    UId = j == null ? null : j.UId
+                };
+
+            foreach (var x in query2)
             {
-                if (x.time == null)
+                // If this is the first submission for the given assignment
+                if (x.score == null)
                 {
                     Submissions s = new Submissions();
                     s.Score = 0;
@@ -187,16 +214,14 @@ namespace LMS.Controllers
 
                     db.Submissions.Add(s);
 
-                    db.SaveChanges();
-
-                    return Json(new { success = true });
-
+                    success = true;
                 }
 
                 else
                 {
+                    // Keeps the score from the previous submission, but updates everything else in the submission
                     Submissions s = new Submissions();
-                    s.Score = 0;
+                    s.Score = (uint)x.score;
                     s.Contents = contents;
                     s.Time = DateTime.Now;
                     s.UId = uid;
@@ -207,15 +232,33 @@ namespace LMS.Controllers
                     s.CourseId = x.courseID;
                     s.Subject = x.subject;
 
+                    // Removes the previous submission and replaces it with the new submission
+                    Submissions removed = new Submissions();
+                    removed.Score = (uint)x.score;
+                    removed.AssignId = x.assignID;
+                    removed.CatId = x.catID;
+                    removed.ClassId = x.classID;
+                    removed.Contents = x.contents;
+                    removed.CourseId = x.courseID;
+                    removed.Subject = x.subject;
+                    removed.SubmissionId = (int)x.subID;
+                    removed.UId = x.UId;
+
+                    db.Submissions.Remove(removed);
                     db.Submissions.Add(s);
 
-                    db.SaveChanges();
-
-                    return Json(new { success = true });
+                    success = true;
                 }
                 
 
 
+            }
+
+            if (success)
+            {
+                db.SaveChanges();
+
+                return Json(new { success = true });
             }
             
             return Json(new { success = false });
@@ -234,7 +277,10 @@ namespace LMS.Controllers
         /// false if the student is already enrolled in the Class.</returns>
         public IActionResult Enroll(string subject, int num, string season, int year, string uid)
         {
+            // Used to determine if the enrollment was successful
             bool success = false;
+
+            // Checks if the student is already enrolled in the class
             var query =
                 from d in db.Departments
                 join co in db.Courses on d.Subject equals co.Dept
@@ -243,6 +289,7 @@ namespace LMS.Controllers
                 where d.Subject == subject && co.Number == num && cl.Season == season && cl.Year == year && e.UId == uid
                 select e.UId;
 
+            // If the student is already enrolled, don't enroll them
             if (query.Count() != 0)
             {
                 success = false;
@@ -250,6 +297,7 @@ namespace LMS.Controllers
 
             else
             {
+                // Gets the classID and courseID to be used when inserting the student into the Enrolled table
                 var query2 =
                     from de in db.Departments
                     join cou in db.Courses on de.Subject equals cou.Dept
@@ -261,10 +309,12 @@ namespace LMS.Controllers
                         coID = cou.CourseId,
                     };
 
+                // Makes sure the given class exists
                 if (query2.Count() != 0)
                 {
                     foreach (var x in query2)
                     {
+                        // Adds the student to the Enrolled table
                         Enrolled e = new Enrolled();
                         e.UId = uid;
                         e.ClassId = x.cID;
@@ -315,26 +365,35 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing a single field called "gpa" with the number value</returns>
         public IActionResult GetGPA(string uid)
         {
+            // Used for calculating GPA
             double GPAcounter = 0.0;
             int numClasses = 0;
+
+            // Final GPA
             double gpa = 0.0;
 
+            // Retrieves all of the grades for the given student UId
             var query =
                 from e in db.Enrolled
                 where e.UId == uid
                 select e.Grade;
 
+            // If the student doesn't have any grades, set GPA = 0.0
             if (query.Count() == 0)
             {
                 return Json(new { gpa });
 
             }
+
             foreach (var x in query)
             {
                 numClasses++;
+
+                // Don't count instances where the student doesn't have a grade in a class
                 if (x.Equals("--"))
                     continue;
 
+                // Adds values to the overall GPAcounter depending on what grade was received
                 switch(x)
                 {
                     case "A":
@@ -376,6 +435,7 @@ namespace LMS.Controllers
                 }
             }
 
+            // Determines the final gpa and returns it as a JSON object
             gpa = GPAcounter / numClasses;
             return Json(new { gpa });
         }
